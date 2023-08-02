@@ -1,4 +1,4 @@
 <resources>
-    <string name="app_name">FFMPEGDemo1</string>
+    <string name="app_name">FFMPEGDemo</string>
     <string name="no_internet">No internet available</string>
 </resources>
