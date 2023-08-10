@@ -11,9 +11,13 @@ import android.os.Build;
 import android.os.Environment;
 import android.provider.DocumentsContract;
 import android.provider.MediaStore;
+import android.provider.OpenableColumns;
 import android.util.Log;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.net.URISyntaxException;
 
 public class FileUtils {
@@ -53,6 +57,50 @@ public class FileUtils {
         long filesize=size/1024;
         Log.e("FileUtils", "onCreate: File  "+filesize+"    "+file.length()+" "+file.getAbsolutePath());
     }
+
+    private static boolean copyFile(Context context, Uri uri, String dstPath) {
+        InputStream inputStream = null;
+        OutputStream outputStream = null;
+        try {
+            inputStream = context.getContentResolver().openInputStream(uri);
+            outputStream = new FileOutputStream(dstPath);
+
+            byte[] buff = new byte[100 * 1024];
+            int len;
+            while ((len = inputStream.read(buff)) != -1) {
+                outputStream.write(buff, 0, len);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (inputStream != null) {
+                try {
+                    inputStream.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+
+            if (outputStream != null) {
+                try {
+                    outputStream.close();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+        return true;
+    }
+
+    public static String getFileName(Context context, Uri uri) {
+
+        Cursor cursor = context.getContentResolver().query(uri,null,null,null,null);
+        int nameindex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME);
+        cursor.moveToFirst();
+
+        return  cursor.getString(nameindex);
+    }
     public static String getFilePath(Context context, Uri uri) throws URISyntaxException {
         String selection = null;
         String[] selectionArgs = null;
@@ -64,8 +112,19 @@ public class FileUtils {
                 final String[] split = docId.split(":");
                 return Environment.getExternalStorageDirectory() + "/" + split[1];
             } else if (isDownloadsDocument(uri)) {
-                final String id = DocumentsContract.getDocumentId(uri);
-                uri = ContentUris.withAppendedId(Uri.parse("content://downloads/public_downloads"), Long.valueOf(id));
+//                final String id = DocumentsContract.getDocumentId(uri);
+//                uri = ContentUris.withAppendedId(Uri.parse("content://downloads/public_downloads"), Long.parseLong(id));
+
+
+                String dstPath = context.getCacheDir().getAbsolutePath() + File.separator + getFileName(context,uri);
+
+                if (copyFile(context, uri, dstPath)) {
+                    Log.d(TAG, "copy file success: " + dstPath);
+                    return dstPath;
+
+                } else {
+                    Log.d(TAG, "copy file fail!");
+                }
             } else if (isMediaDocument(uri)) {
                 final String docId = DocumentsContract.getDocumentId(uri);
                 final String[] split = docId.split(":");
